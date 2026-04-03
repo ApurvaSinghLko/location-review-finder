@@ -1,7 +1,6 @@
 let allResults = [];
 let currentUser = null;
 
-// Google Sign-In Handler
 function handleCredentialResponse(response) {
     const base64Url = response.credential.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -11,8 +10,7 @@ function handleCredentialResponse(response) {
     
     currentUser = JSON.parse(jsonPayload);
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    
-    // Display smaller, horizontal user info
+
     const userInfoDiv = document.getElementById('user-info');
     userInfoDiv.innerHTML = `
         <div class="user-profile" style="display: inline-flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; background: rgba(255, 255, 255, 0.08); border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14);">
@@ -330,7 +328,6 @@ function showDetails(event) {
     `;
 }
 
-// Check for persisted login on page load
 const storedUser = localStorage.getItem('currentUser');
 if (storedUser) {
     currentUser = JSON.parse(storedUser);

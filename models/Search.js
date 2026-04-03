@@ -5,6 +5,6 @@ const searchSchema = new mongoose.Schema({
     subject: { type: String, required: true },
     location: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
-}, { collection: 'SearchHistory' }); // This forces the exact name you have in Compass
+}, { collection: 'SearchHistory' });
 
 module.exports = mongoose.model('SearchHistory', searchSchema);

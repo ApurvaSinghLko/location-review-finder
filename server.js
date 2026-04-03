@@ -10,17 +10,14 @@ app.use(cors({
     credentials: true
 }));
 
-// Add headers to allow Google Sign-In
 app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
 });
 
-// This tells Express to look in the /public folder for any file requested
 app.use(express.static('public'));
 
-// Connect to MongoDB
 if (process.env.MONGO_URI) {
     mongoose.connect(process.env.MONGO_URI)
         .then(() => console.log("Connected to MongoDB"))
@@ -29,14 +26,12 @@ if (process.env.MONGO_URI) {
     console.log("MongoDB URI not configured - running without database");
 }
 
-// Ensure MongoDB connection is established
 if (!mongoose.connection.readyState) {
     console.error("MongoDB connection is not established.");
 }
 
 const SearchHistory = require('./models/Search');
 
-// Route to save history
 app.post('/api/history', async (req, res) => {
     if (!mongoose.connection.readyState) {
         return res.status(503).send("Database not connected");
@@ -50,7 +45,6 @@ app.post('/api/history', async (req, res) => {
     }
 });
 
-// Route to fetch history for a specific user
 app.get('/api/history/:userId', async (req, res) => {
     if (!mongoose.connection.readyState) {
         return res.status(503).send("Database not connected");
@@ -58,52 +52,72 @@ app.get('/api/history/:userId', async (req, res) => {
     try {
         const history = await SearchHistory.find({ userId: req.params.userId })
             .sort({ timestamp: -1 })
-            .limit(10); // Grab the last 10 searches
+            .limit(10);
         res.json(history);
     } catch (error) {
         res.status(500).send(error.message);
     }
 });
 
-// Now you can simplify your root route
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
 });
 
-// Updated to use Google Custom Search API via Environment Variables
+async function fetchSerpApi(q, apiKey) {
+    const url = new URL('https://serpapi.com/search.json');
+    url.searchParams.set('engine', 'google');
+    url.searchParams.set('q', q);
+    url.searchParams.set('api_key', apiKey);
+    return fetch(url);
+}
+
 app.get('/api/search', async (req, res) => {
     try {
         const { q } = req.query;
-        
-        // Grab credentials safely from Vercel / .env
-        const apiKey = process.env.GOOGLE_API_KEY;
-        const cx = process.env.GOOGLE_CX;
-
-        if (!apiKey || !cx) {
-            return res.status(500).json({ error: "Google API Key or CX is missing." });
+        if (!q || typeof q !== 'string') {
+            return res.status(400).json({ error: 'Missing or invalid query parameter q.' });
         }
 
-        const googleUrl = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(q)}`;
+        const keys = [process.env.SEARCH_API_A, process.env.SEARCH_API_B, process.env.SEARCH_API_C]
+            .filter((k) => k && String(k).trim());
 
-        const response = await fetch(googleUrl);
-        if (!response.ok) {
-            throw new Error(`Google Search API request failed: ${response.status}`);
+        if (keys.length === 0) {
+            return res.status(500).json({ error: 'No search API keys configured.' });
         }
 
-        const data = await response.json();
-        
-        // Format Google's output so it perfectly matches what script.js expects
-        res.json({
-            organic_results: data.items || []
+        let lastStatus = 500;
+        let lastBody = '';
+
+        for (let i = 0; i < keys.length; i++) {
+            const response = await fetchSerpApi(q, keys[i]);
+            lastStatus = response.status;
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.error) {
+                    return res.status(502).json({ error: String(data.error) });
+                }
+                return res.json({ organic_results: data.organic_results || [] });
+            }
+
+            const shouldRetry = (response.status === 429 || response.status === 403) && i < keys.length - 1;
+            if (shouldRetry) {
+                continue;
+            }
+
+            lastBody = await response.text();
+            break;
+        }
+
+        return res.status(lastStatus >= 400 ? lastStatus : 500).json({
+            error: lastBody || `Search request failed with status ${lastStatus}`
         });
-
     } catch (error) {
-        console.error('Google API proxy error:', error);
+        console.error('SerpAPI proxy error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Vercel Serverless requirements (Localhost fallback)
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 5500;
     app.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
