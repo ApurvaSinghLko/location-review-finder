@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Location review finder</title>
+    <!-- <link rel="stylesheet" href="vanillaCSS.css"> -->
+    <link rel="stylesheet" href="style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="main-wrapper">
+        <header>
+            <h1>Location review finder</h1>
+            <div class="auth-section">
+                <div id="g_id_onload"
+                     data-client_id="974910001474-nj909gjr3l1hi7d7mrnav2prrhse82qm.apps.googleusercontent.com"
+                     data-callback="handleCredentialResponse">
+                </div>
+                <div class="g_id_signin" data-type="standard"></div>
+                <div id="user-info" class="user-info"></div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="subject" placeholder="I want to search"> <p>in</p>
+                <input type="text" id="location" placeholder="Pune">
+                <button onclick="getReviews()">Find Reviews</button>
+            </div>
+        </header>
+
+        <main class="app-container">
+            <aside id="list-panel">
+                <p class="status-text">Your search results will appear here...</p>
+            </aside>
+
+            <section id="details-panel">
+                <p class="status-text">Select a post on the left to read the full experience.</p>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
